@@ -1,0 +1,60 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+build/
+dist/
+wheels/
+*.egg-info/
+
+# --- Entorno virtual (uv) ---
+.venv/
+
+# --- Secretos y configuración local ---
+# .env tiene tus valores reales: nunca se sube.
+# .env.example sí se sube, para mostrar qué variables hacen falta.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Caches de herramientas ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Datos generados por el proyecto ---
+# Los HTML y PDF que baja el rastreador se regeneran; la lista de fuentes sí se sube.
+data/raw/
+data/cache/
+# Corridas locales de MLflow (las trazas reales van a Databricks)
+mlruns/
+mlartifacts/
+# Respaldos de la base de datos
+*.dump
+*.sql.gz
+
+# --- Frontend (React) ---
+node_modules/
+web/dist/
+
+# --- Infraestructura ---
+.azure/
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# --- Logs ---
+*.log
+
+# --- Editores ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
