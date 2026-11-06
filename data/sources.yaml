@@ -1,0 +1,362 @@
+# Official sources for the procedures covered by Sin Vueltas.
+#
+# Each procedure lists the pages and PDFs the crawler downloads and the agent cites.
+# status:
+#   ok      -> the URL points to the requirements themselves
+#   review  -> the URL is a portal or home page; find the specific page before ingesting
+# varies_by_profile: true when requirements differ for salaried, self-employed or retired people.
+#
+# Bank pages are included only as examples of published requirements.
+# The assistant never recommends a bank or a product.
+
+version: 1
+last_reviewed: 2026-11-06
+
+procedures:
+  # --- Documentos ---------------------------------------------------------------
+  - id: cedula-primera-vez
+    name: Cédula de identidad por primera vez
+    group: documentos
+    institution: Tribunal Supremo de Elecciones (TSE)
+    varies_by_profile: false
+    sources:
+      - url: https://www.tse.go.cr/pdf/requisitosytramites/Solicitud-de-cedula-de-identidad-por-primera-vez.pdf
+        format: pdf
+        status: ok
+
+  - id: cedula-duplicado
+    name: Duplicado o renovación de cédula
+    group: documentos
+    institution: Tribunal Supremo de Elecciones (TSE)
+    varies_by_profile: false
+    sources:
+      - url: https://www.tse.go.cr/pdf/varios/cc_cedula_identidad.pdf
+        format: pdf
+        status: ok
+        note: Carta de compromiso con requisitos de solicitud de cédula
+      - url: https://www.consulta.tse.go.cr/ReimpresionCedular/
+        format: online_service
+        status: ok
+        note: Servicio en línea para reimpresión; se cita, no se rastrea
+
+  - id: certificacion-nacimiento
+    name: Certificación de nacimiento digital
+    group: documentos
+    institution: Tribunal Supremo de Elecciones (TSE)
+    varies_by_profile: false
+    sources:
+      - url: https://www.tse.go.cr/pdf/requisitosytramites/Expedicion-de-certificaciones-de-hechos-vitales-y-civiles.pdf
+        format: pdf
+        status: ok
+        note: Ficha oficial del trámite (presencial y digital)
+      - url: "https://www.consulta.tse.go.cr/appcdi#/verificador"
+        format: online_service
+        status: ok
+        note: Plataforma de Certificaciones Digitales (CDI); se cita, no se rastrea
+
+  - id: pasaporte
+    name: Pasaporte (primera vez y renovación)
+    group: documentos
+    institution: Dirección General de Migración y Extranjería (DGME); citas también en el BCR
+    varies_by_profile: false
+    sources:
+      - url: https://migracion.go.cr/pasaportes-permisos-de-salida/
+        format: html
+        status: ok
+        note: Requisitos para mayores y menores de edad, citas y costos
+      - url: https://bcrcita.bancobcr.com/citas/Home/Pasaporte
+        format: html
+        status: ok
+        note: Requisitos para tramitar el pasaporte de mayores de edad en el BCR
+      - url: https://bcrcita.bancobcr.com/citas/Home/RequisitosMenores
+        format: html
+        status: ok
+        note: Requisitos para menores de edad en el BCR (deben ir ambos padres)
+      - url: https://bcrcita.bancobcr.com/citas/
+        format: online_service
+        status: ok
+        note: Sistema de citas del BCR; se cita, no se rastrea
+
+  - id: permiso-salida-menores
+    name: Permiso de salida del país para menores de edad
+    group: documentos
+    institution: Dirección General de Migración y Extranjería (DGME); citas también en el BCR
+    varies_by_profile: false
+    sources:
+      - url: https://migracion.go.cr/pasaportes-permisos-de-salida/
+        format: html
+        status: ok
+        note: Misma página que pasaporte; sección "Permisos de Salida"
+      - url: https://bcrcita.bancobcr.com/citas/Home/RequisitosMenores
+        format: html
+        status: ok
+        note: El permiso se firma en la misma cita del pasaporte del menor
+
+  # Licencias: Educación Vial (MOPT) evalúa, COSEVI administra y el BCR imprime.
+  # Las URLs del BCR apuntan a la misma página con un ancla (#seccion) para que la cita
+  # lleve directo a la sección. El crawler quita el ancla y descarga la página una sola vez.
+  - id: licencia-primera-vez
+    name: Licencia de conducir por primera vez
+    group: documentos
+    institution: Dirección General de Educación Vial (MOPT) y Banco de Costa Rica (BCR)
+    varies_by_profile: false
+    sources:
+      - url: https://educacionvial.go.cr/procedimientos-y-requisitos/practicos/requisitos-practicos/
+        format: html
+        status: ok
+        note: Requisitos de la prueba práctica por tipo de licencia
+      - url: "https://bcrcita.bancobcr.com/citas/Home/Licencia#primeraVez"
+        format: html
+        status: ok
+        note: Requisitos para imprimir la licencia en el BCR después de aprobar la práctica
+      - url: https://bcrcita.bancobcr.com/citas/
+        format: online_service
+        status: ok
+        note: Sistema de citas del BCR; se cita, no se rastrea
+      - url: https://educacionvial.go.cr
+        format: html
+        status: review
+        note: Buscar la página de credenciales y curso/prueba teórica (pasos previos a la práctica)
+
+  - id: licencia-renovacion
+    name: Renovación de licencia de conducir
+    group: documentos
+    institution: Banco de Costa Rica (BCR) y COSEVI
+    varies_by_profile: false
+    sources:
+      - url: "https://bcrcita.bancobcr.com/citas/Home/Licencia#renovacion"
+        format: html
+        status: ok
+        note: Requisitos, costo y plazo para renovar (hasta 3 meses antes del vencimiento)
+      - url: https://bcrcita.bancobcr.com/citas/
+        format: online_service
+        status: ok
+        note: Sistema de citas del BCR; se cita, no se rastrea
+
+  - id: licencia-duplicado
+    name: Duplicado de licencia de conducir
+    group: documentos
+    institution: Banco de Costa Rica (BCR) y COSEVI
+    varies_by_profile: false
+    sources:
+      - url: "https://bcrcita.bancobcr.com/citas/Home/Licencia#duplicado"
+        format: html
+        status: ok
+        note: Incluye a quien quiere cambiarla con más de 3 meses de vigencia (en ese caso no puede renovar)
+      - url: https://bcrcita.bancobcr.com/citas/
+        format: online_service
+        status: ok
+        note: Sistema de citas del BCR; se cita, no se rastrea
+
+  - id: hoja-delincuencia
+    name: Certificado de antecedentes penales (hoja de delincuencia)
+    group: documentos
+    institution: Poder Judicial
+    varies_by_profile: false
+    sources:
+      - url: https://servicios.poder-judicial.go.cr/images/Documentos/Servicios/pasos_hoja.pdf
+        format: pdf
+        status: ok
+      - url: https://pj.poder-judicial.go.cr/
+        format: html
+        status: review
+        note: Portal; buscar la página de "Solicitud Hoja de Delincuencia"
+
+  # --- Vehículo -----------------------------------------------------------------
+  - id: marchamo
+    name: Derecho de circulación (marchamo)
+    group: vehiculo
+    institution: Instituto Nacional de Seguros (INS)
+    varies_by_profile: false
+    sources:
+      - url: https://www.grupoins.com
+        format: html
+        status: review
+        note: Portal; buscar la página de requisitos y consulta del marchamo
+
+  - id: revision-tecnica
+    name: Revisión técnica vehicular (RTV)
+    group: vehiculo
+    institution: DEKRA Costa Rica
+    varies_by_profile: false
+    sources:
+      - url: https://www.dekra.cr
+        format: html
+        status: review
+        note: Único sitio oficial de citas; buscar la página de requisitos
+
+  - id: traspaso-vehiculo
+    name: Traspaso de vehículo
+    group: vehiculo
+    institution: Registro Nacional
+    varies_by_profile: false
+    sources:
+      - url: https://www.rnpdigital.com
+        format: html
+        status: review
+        note: Portal; el traspaso se hace ante notario y se inscribe en el Registro
+
+  # --- Trabajo e impuestos ------------------------------------------------------
+  - id: ccss-trabajador-independiente
+    name: Aseguramiento como trabajador independiente
+    group: trabajo
+    institution: Caja Costarricense de Seguro Social (CCSS)
+    varies_by_profile: true
+    sources:
+      - url: https://www.ccss.sa.cr/tramites
+        format: html
+        status: review
+        note: Catálogo de trámites de la CCSS; buscar "Trabajador Independiente"
+
+  - id: ccss-seguro-voluntario
+    name: Seguro voluntario
+    group: trabajo
+    institution: Caja Costarricense de Seguro Social (CCSS)
+    varies_by_profile: true
+    sources:
+      - url: https://www.ccss.sa.cr/tramites
+        format: html
+        status: review
+        note: Catálogo de trámites de la CCSS; buscar "Asegurado Voluntario"
+
+  - id: orden-patronal-digital
+    name: Orden patronal digital
+    group: trabajo
+    institution: Caja Costarricense de Seguro Social (CCSS)
+    varies_by_profile: true
+    sources:
+      - url: https://www.ccss.sa.cr
+        format: html
+        status: review
+        note: Se genera en la Oficina Virtual CCSS; buscar la página informativa
+
+  - id: hacienda-inscripcion
+    name: Inscripción en Hacienda (Registro Único Tributario en TRIBU-CR)
+    group: trabajo
+    institution: Ministerio de Hacienda
+    varies_by_profile: true
+    sources:
+      - url: https://www.hacienda.go.cr
+        format: html
+        status: review
+        note: TRIBU-CR reemplazó a ATV en octubre de 2025; buscar la guía de inscripción
+      - url: https://ovitribucr.hacienda.go.cr
+        format: online_service
+        status: ok
+        note: Oficina Virtual de TRIBU-CR; se cita, no se rastrea
+
+  # --- Dinero -------------------------------------------------------------------
+  - id: prestamo-personal
+    name: Préstamo personal
+    group: dinero
+    institution: "Bancos (ejemplo: Banco Nacional)"
+    varies_by_profile: true
+    sources:
+      - url: https://www.bncr.fi.cr/creditos-personales/bn-rapiditos
+        format: html
+        status: review
+        note: La página existe, pero robots.txt bloquea bots; revisar antes de rastrear o usar otra fuente
+
+  - id: credito-vivienda
+    name: Crédito de vivienda
+    group: dinero
+    institution: "Bancos (ejemplo: Banco General)"
+    varies_by_profile: true
+    sources:
+      - url: https://www.bgeneral.fi.cr/personas/prestamos-hipotecarios/
+        format: html
+        status: ok
+        note: Separa requisitos para asalariados e independientes; puede rechazar clientes automáticos
+
+  - id: bono-vivienda
+    name: Bono Familiar de Vivienda
+    group: dinero
+    institution: Banco Hipotecario de la Vivienda (BANHVI)
+    varies_by_profile: true
+    sources:
+      - url: https://www.banhvi.fi.cr/bono/Condiciones_bono.aspx
+        format: html
+        status: ok
+        note: Condiciones generales e ingreso familiar máximo
+      - url: https://www.banhvi.fi.cr/bono/donde_solicitar_bono.aspx
+        format: html
+        status: ok
+      - url: https://www.banhvi.fi.cr/bono/propositos_bono/construir_lote_propio.aspx
+        format: html
+        status: ok
+      - url: https://www.banhvi.fi.cr/bono/propositos_bono/compra_lote_construccion.aspx
+        format: html
+        status: ok
+      - url: https://www.banhvi.fi.cr/bono/propositos_bono/construir_lote_familiar.aspx
+        format: html
+        status: ok
+      - url: https://www.banhvi.fi.cr/bono/propositos_bono/mejora_casa_propia.aspx
+        format: html
+        status: ok
+
+  - id: prestamo-conape
+    name: Préstamo para estudios (CONAPE)
+    group: dinero
+    institution: Comisión Nacional de Préstamos para Educación (CONAPE)
+    varies_by_profile: true
+    sources:
+      - url: https://www.conape.go.cr/wp-content/uploads/2023/11/REQUISITOS-TECNICOS-EN-COSTA-RICA-1-1.pdf
+        format: pdf
+        status: ok
+      - url: https://www.conape.go.cr/wp-content/uploads/2023/11/REQUISITOS-POSGRADOS-EN-COSTA-RICA.pdf
+        format: pdf
+        status: ok
+      - url: https://www.conape.go.cr/wp-content/uploads/2023/11/REQUISITOS-COMPRA-DE-EQUIPO.pdf
+        format: pdf
+        status: ok
+      - url: https://www.conape.go.cr/wp-content/uploads/2023/11/REQUISITOS-AMPLIACION.pdf
+        format: pdf
+        status: ok
+
+  - id: tasas-maximas-interes
+    name: Tasas de interés máximas (ley de usura)
+    group: dinero
+    institution: Banco Central de Costa Rica (BCCR)
+    varies_by_profile: false
+    sources:
+      - url: https://sdd.bccr.fi.cr/es/IndicadoresEconomicos/Inicio/Contenedor/397?Cuadro=880
+        format: html
+        status: ok
+        note: Cuadro oficial de tasas anuales máximas; se actualiza en enero y julio
+      - url: https://www.bccr.fi.cr/content/dam/bccr/comunicacion-y-prensa/comunicados-de-prensa/cp-bccr-017-2026-tasas-maximas-interes-julio-2026.pdf
+        format: pdf
+        status: ok
+        note: Comunicado CP-BCCR-017-2026 (segundo semestre de 2026); cambia cada semestre
+      - url: https://www.bccr.fi.cr/cr/es/noticias/listado-de-noticias/2026/nuevas-tasas-de-interes-anuales-maximas-para-creditos-y-microcreditos-3-07-2026.html
+        format: html
+        status: ok
+        note: Noticia oficial del mismo comunicado
+
+# Sources that are not procedures but back the assistant's answers and tools.
+references:
+  - id: catalogo-nacional-tramites
+    name: Catálogo Nacional de Trámites
+    institution: Ministerio de Economía, Industria y Comercio (MEIC)
+    url: https://www.tramites.go.cr
+    status: review
+    note: Por la Ley 8220, todo requisito exigible debe estar publicado aquí
+
+  - id: bcr-oficinas-punto-pais
+    name: Oficinas del BCR que tramitan licencias, pasaportes y DIMEX
+    institution: Banco de Costa Rica (BCR)
+    url: https://bcrcita.bancobcr.com/citas/Home/Oficinas?Servicio=Licencias%2FPasaportes
+    status: ok
+    note: Para la herramienta "dónde hacer el trámite"; también hay atención en el 800-227-2482
+
+  - id: ley-8220
+    name: Ley 8220 de Protección al Ciudadano del Exceso de Requisitos y Trámites
+    institution: Asamblea Legislativa
+    url: https://www.archivonacional.go.cr/web/normativa/ley8220.pdf
+    status: ok
+
+  - id: bccr-indicadores
+    name: Indicadores económicos del BCCR (tipo de cambio)
+    institution: Banco Central de Costa Rica (BCCR)
+    url: https://www.bccr.fi.cr
+    status: review
+    note: El BCCR reemplazó su servicio web en 2026 por un nuevo sitio de indicadores; revisar el acceso antes de construir la herramienta
