@@ -8,10 +8,44 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: sinvueltas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d sinvueltas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://app:app@localhost:5432/sinvueltas
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync --locked
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run pytest
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check
+
+      - name: Check formatting
+        run: uv run ruff format --check
+
+      - name: Check migrations (upgrade, downgrade, upgrade)
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+
+      - name: Test
+        run: uv run pytest
