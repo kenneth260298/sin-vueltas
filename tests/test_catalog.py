@@ -1,6 +1,8 @@
+import textwrap
 from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from sin_vueltas.ingest.catalog import Catalog, Source, load_catalog
@@ -68,3 +70,23 @@ def test_rejects_one_page_with_two_formats() -> None:
 def test_rejects_an_empty_catalog() -> None:
     with pytest.raises(ValidationError):
         catalog()
+
+
+def test_rejects_duplicate_keys(tmp_path: Path) -> None:
+    # Deleting a procedure's header lines leaves its `sources` attached to the one above.
+    broken = tmp_path / "sources.yaml"
+    broken.write_text(
+        textwrap.dedent(
+            """\
+            version: 1
+            procedures:
+              - id: first
+                sources: []
+                sources: []
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(yaml.YAMLError, match="duplicate key 'sources'"):
+        load_catalog(broken)

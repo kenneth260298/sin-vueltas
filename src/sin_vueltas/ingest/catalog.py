@@ -10,6 +10,25 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 DEFAULT_CATALOG_PATH = Path("data/sources.yaml")
 
 
+class UniqueKeyLoader(yaml.SafeLoader):
+    """SafeLoader that rejects duplicate keys instead of silently keeping the last one.
+
+    A deleted line can turn two procedures into one with a repeated `sources` key;
+    plain YAML would quietly drop the first list.
+    """
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict:
+        seen = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in seen:
+                raise yaml.constructor.ConstructorError(
+                    None, None, f"duplicate key {key!r}", key_node.start_mark
+                )
+            seen.add(key)
+        return super().construct_mapping(node, deep=deep)
+
+
 class Source(BaseModel):
     """One official page, PDF or online service cited for a procedure."""
 
@@ -85,5 +104,5 @@ class Catalog(BaseModel):
 
 def load_catalog(path: Path = DEFAULT_CATALOG_PATH) -> Catalog:
     """Read and validate the catalog file."""
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data = yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueKeyLoader)
     return Catalog.model_validate(data)
