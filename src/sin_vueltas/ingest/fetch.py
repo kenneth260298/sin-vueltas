@@ -14,6 +14,7 @@ import time
 from collections import Counter
 from dataclasses import dataclass
 from functools import cached_property
+from typing import Literal
 from urllib.parse import urlsplit
 from urllib.robotparser import RobotFileParser
 
@@ -44,8 +45,8 @@ LIST_DOCUMENTS = """
 
 INSERT_VERSION = """
     INSERT INTO document_versions
-        (document_id, content_hash, storage_path, extracted_text, text_hash)
-    VALUES (%s, %s, %s, %s, %s)
+        (document_id, content_hash, storage_path, extracted_text, text_hash, origin)
+    VALUES (%s, %s, %s, %s, %s, %s)
     ON CONFLICT (document_id, text_hash) DO NOTHING
 """
 
@@ -114,6 +115,7 @@ class Failed:
 # What one HTTP request returns, and what gets recorded for a document.
 FetchResult = Downloaded | NotModified | Failed
 Outcome = NewVersion | NotModified | Blocked | Failed
+Origin = Literal["crawler", "manual"]
 
 
 def build_client(transport: httpx.BaseTransport | None = None) -> httpx.Client:
@@ -179,10 +181,15 @@ class HostThrottle:
         self.last_request[host] = time.monotonic()
 
 
+def is_pdf(content: bytes) -> bool:
+    """PDF files start with %PDF- within their first kilobyte."""
+    return b"%PDF-" in content[:1024]
+
+
 def content_error(document_format: str, content: bytes, content_type: str) -> str | None:
     """Catch error pages served with status 200 instead of the expected document."""
     received = content_type or "no content type"
-    if document_format == "pdf" and b"%PDF-" not in content[:1024]:
+    if document_format == "pdf" and not is_pdf(content):
         return f"expected a PDF but got {received}"
     if document_format == "html" and "html" not in content_type:
         head = content[:2048].lower()
@@ -247,6 +254,28 @@ def prepare_version(
     )
 
 
+def insert_version(
+    cur: psycopg.Cursor,
+    storage: Storage,
+    document: Document,
+    version: NewVersion,
+    origin: Origin = "crawler",
+) -> bool:
+    """Record a version unless its text is already known. Returns True when it is new."""
+    extension = "pdf" if is_pdf(version.content) else document.format
+    key = f"{version.content_hash}.{extension}"
+    cur.execute(
+        INSERT_VERSION,
+        (document.id, version.content_hash, key, version.text, version.text_hash, origin),
+    )
+    is_new = cur.rowcount == 1
+    # Only keep the original file when its text is new. If saving fails, the
+    # surrounding transaction rolls back and the version is not recorded either.
+    if is_new and not storage.exists(key):
+        storage.save(key, version.content)
+    return is_new
+
+
 def record_outcome(
     conn: psycopg.Connection, storage: Storage, document: Document, outcome: Outcome
 ) -> str:
@@ -254,16 +283,7 @@ def record_outcome(
     with conn.transaction(), conn.cursor() as cur:
         match outcome:
             case NewVersion():
-                key = f"{outcome.content_hash}.{document.format}"
-                cur.execute(
-                    INSERT_VERSION,
-                    (document.id, outcome.content_hash, key, outcome.text, outcome.text_hash),
-                )
-                is_new = cur.rowcount == 1
-                # Only keep the original file when its text is new. If saving fails,
-                # the transaction rolls back and the version is not recorded either.
-                if is_new and not storage.exists(key):
-                    storage.save(key, outcome.content)
+                is_new = insert_version(cur, storage, document, outcome)
                 cur.execute(
                     MARK_CHECKED, (200, None, outcome.etag, outcome.last_modified, document.id)
                 )
