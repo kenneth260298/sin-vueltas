@@ -320,7 +320,7 @@ procedures:
     varies_by_profile: false
     sources:
       - url: https://sdd.bccr.fi.cr/es/IndicadoresEconomicos/Inicio/Contenedor/397?Cuadro=880
-        format: html
+        format: online_service
         status: ok
         note: Cuadro oficial de tasas anuales máximas; se actualiza en enero y julio
       - url: https://www.bccr.fi.cr/cr/es/noticias/listado-de-noticias/2026/nuevas-tasas-de-interes-anuales-maximas-para-creditos-y-microcreditos-3-07-2026.html
