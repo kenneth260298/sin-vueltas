@@ -30,10 +30,10 @@ procedures:
     institution: Tribunal Supremo de Elecciones (TSE)
     varies_by_profile: false
     sources:
-      - url: https://www.tse.go.cr/pdf/varios/cc_cedula_identidad.pdf
+      - url: https://www.tse.go.cr/pdf/requisitosytramites/Solicitud-de-renovacion-de-cedula-de-identidad.pdf
         format: pdf
         status: ok
-        note: Carta de compromiso con requisitos de solicitud de cédula
+        note: Renewal and replacement requirements (lost, stolen, damaged)
       - url: https://www.consulta.tse.go.cr/ReimpresionCedular/
         format: online_service
         status: ok
@@ -154,13 +154,14 @@ procedures:
     institution: Poder Judicial
     varies_by_profile: false
     sources:
-      - url: https://servicios.poder-judicial.go.cr/images/Documentos/Servicios/pasos_hoja.pdf
+      - url: https://servicios.poder-judicial.go.cr/index.php/servicio?service=29
+        format: html
+        status: ok
+        note: In-person request at the Registro Judicial and regional offices
+      - url: https://servicios.poder-judicial.go.cr/media/com_k2_j5/upload/pasos_hoja_2024_10_25_16_36_55.pdf
         format: pdf
         status: ok
-      - url: https://pj.poder-judicial.go.cr/
-        format: html
-        status: review
-        note: Portal; buscar la página de "Solicitud Hoja de Delincuencia"
+        note: Steps to request the digital hoja de delincuencia (2024)
 
   # --- Vehículo -----------------------------------------------------------------
   - id: marchamo
@@ -169,10 +170,18 @@ procedures:
     institution: Instituto Nacional de Seguros (INS)
     varies_by_profile: false
     sources:
-      - url: https://www.grupoins.com
+      - url: https://www.grupoins.com/seguros-personas/marchamo/seguro-obligatorio-automotor-marchamo/
         format: html
-        status: review
-        note: Portal; buscar la página de requisitos y consulta del marchamo
+        status: ok
+        note: Payment requirements, replacements and vehicles missing from the INS database
+      - url: https://www.grupoins.com/ins-noticias/noticias/asi-se-vera-el-nuevo-marchamo-digital/
+        format: html
+        status: ok
+        note: Digital marchamo starting November 2026
+      - url: https://marchamo.grupoins.com/
+        format: online_service
+        status: ok
+        note: Official site to look up and pay the marchamo; cited, not crawled
 
   - id: revision-tecnica
     name: Revisión técnica vehicular (RTV)
@@ -180,10 +189,14 @@ procedures:
     institution: DEKRA Costa Rica
     varies_by_profile: false
     sources:
-      - url: https://www.dekra.cr
+      - url: https://www.dekra.cr/es/preguntas-frecuentes/
         format: html
-        status: review
-        note: Único sitio oficial de citas; buscar la página de requisitos
+        status: ok
+        note: Booking, what to bring and re-inspection rules
+      - url: https://www.dekra.cr/es/politica-de-citas/
+        format: html
+        status: ok
+        note: Appointment policy and reasons service can be refused
 
   - id: traspaso-vehiculo
     name: Traspaso de vehículo
@@ -191,10 +204,14 @@ procedures:
     institution: Registro Nacional
     varies_by_profile: false
     sources:
-      - url: https://www.rnpdigital.com
-        format: html
-        status: review
-        note: Portal; el traspaso se hace ante notario y se inscribe en el Registro
+      - url: https://www.rnpdigital.com/bienes_muebles/documentos/Formularios/DIO-011%20Traspaso%20de%20Vehiculos.pdf
+        format: pdf
+        status: ok
+        note: Registro Nacional requirements sheet for vehicle transfers
+      - url: https://www.rnpdigital.com/centroinforegistral/registros/bienes%20muebles/GuiasCalificacion/Guia-de-Servicios-Bienes-Muebles-2025.pdf
+        format: pdf
+        status: ok
+        note: 2025 service guide for vehicles and other movable property
 
   # --- Trabajo e impuestos ------------------------------------------------------
   - id: ccss-trabajador-independiente
@@ -203,10 +220,18 @@ procedures:
     institution: Caja Costarricense de Seguro Social (CCSS)
     varies_by_profile: true
     sources:
-      - url: https://www.ccss.sa.cr/tramites
+      - url: https://aissfa.ccss.sa.cr/arc/normativa/18/reglamento_trabajador_independiente.pdf
+        format: pdf
+        status: ok
+        note: Regulation; article 7 lists the registration requirements
+      - url: https://www.ccss.sa.cr/web/trabajadora-domestica/
         format: html
         status: review
-        note: Catálogo de trámites de la CCSS; buscar "Trabajador Independiente"
+        note: Plain-language requirements for self-employed and voluntary insurance
+      - url: https://www.ccss.sa.cr/tramites
+        format: online_service
+        status: ok
+        note: Procedure catalog rendered with JavaScript; cited, not crawled
 
   - id: ccss-seguro-voluntario
     name: Seguro voluntario
@@ -214,10 +239,14 @@ procedures:
     institution: Caja Costarricense de Seguro Social (CCSS)
     varies_by_profile: true
     sources:
-      - url: https://www.ccss.sa.cr/tramites
+      - url: https://www.ccss.sa.cr/web/trabajadora-domestica/
         format: html
         status: review
-        note: Catálogo de trámites de la CCSS; buscar "Asegurado Voluntario"
+        note: Section "Seguro Voluntario" lists the requirements
+      - url: https://www.ccss.sa.cr/servicios-enlinea
+        format: html
+        status: ok
+        note: How to apply through the Oficina Virtual and what is needed to register
 
   - id: orden-patronal-digital
     name: Orden patronal digital
@@ -225,10 +254,14 @@ procedures:
     institution: Caja Costarricense de Seguro Social (CCSS)
     varies_by_profile: true
     sources:
-      - url: https://www.ccss.sa.cr
+      - url: https://www.ccss.sa.cr/web/orden/
         format: html
-        status: review
-        note: Se genera en la Oficina Virtual CCSS; buscar la página informativa
+        status: ok
+        note: Steps to generate the digital orden patronal
+      - url: https://www.ccss.sa.cr/faq/
+        format: html
+        status: ok
+        note: Oficina Virtual FAQ, includes how to download the orden patronal
 
   - id: hacienda-inscripcion
     name: Inscripción en Hacienda (Registro Único Tributario en TRIBU-CR)
@@ -236,14 +269,18 @@ procedures:
     institution: Ministerio de Hacienda
     varies_by_profile: true
     sources:
-      - url: https://www.hacienda.go.cr
-        format: html
-        status: review
-        note: TRIBU-CR reemplazó a ATV en octubre de 2025; buscar la guía de inscripción
+      - url: https://www.hacienda.go.cr/docs/dPreguntasYRespuestasDeTRIBU-CR.pdf
+        format: pdf
+        status: ok
+        note: TRIBU-CR FAQ, includes registration requirements for individuals
+      - url: https://www.hacienda.go.cr/docs/MH-DGT-RES-000-2025_INSCRIP_MODIF_DES_RUT_VF.pdf
+        format: pdf
+        status: ok
+        note: Official resolution with RUT registration requirements
       - url: https://ovitribucr.hacienda.go.cr
         format: online_service
         status: ok
-        note: Oficina Virtual de TRIBU-CR; se cita, no se rastrea
+        note: TRIBU-CR virtual office; cited, not crawled
 
   # --- Dinero -------------------------------------------------------------------
   - id: prestamo-personal
@@ -320,7 +357,7 @@ procedures:
     varies_by_profile: false
     sources:
       - url: https://sdd.bccr.fi.cr/es/IndicadoresEconomicos/Inicio/Contenedor/397?Cuadro=880
-        format: html
+        format: online_service
         status: ok
         note: Cuadro oficial de tasas anuales máximas; se actualiza en enero y julio
       - url: https://www.bccr.fi.cr/cr/es/noticias/listado-de-noticias/2026/nuevas-tasas-de-interes-anuales-maximas-para-creditos-y-microcreditos-3-07-2026.html

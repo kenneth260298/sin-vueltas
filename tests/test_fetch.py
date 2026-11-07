@@ -1,263 +1,165 @@
-"""Download the catalog documents politely and record every new version.
+"""Crawler tests. HTTP is served by httpx.MockTransport, so no test touches the network."""
 
-Rules the crawler follows:
-- It identifies itself with a User-Agent that links to the repository.
-- It obeys robots.txt and waits between requests to the same host.
-- It asks the server whether a document changed (ETag / Last-Modified) before downloading.
-- Files are stored by content hash, so identical content is never stored twice.
-- A failed download never deletes anything: the last approved version keeps serving answers.
-"""
-
-import hashlib
-import logging
-import time
-from collections import Counter
-from dataclasses import dataclass
-from urllib.parse import urlsplit
-from urllib.robotparser import RobotFileParser
+from collections.abc import Callable
+from pathlib import Path
 
 import httpx
 import psycopg
 
-from sin_vueltas.ingest.storage import Storage
+from sin_vueltas.ingest.fetch import (
+    USER_AGENT,
+    Document,
+    Downloaded,
+    Failed,
+    NewVersion,
+    NotModified,
+    RobotsPolicy,
+    build_client,
+    fetch_document,
+    prepare_version,
+    record_outcome,
+)
+from sin_vueltas.ingest.storage import LocalStorage
 
-logger = logging.getLogger(__name__)
-
-USER_AGENT = "SinVueltasBot/0.1 (+https://github.com/kenneth260298/sin-vueltas)"
-REQUEST_TIMEOUT_SECONDS = 30.0
-DELAY_BETWEEN_REQUESTS_SECONDS = 2.0
-MAX_DOCUMENT_BYTES = 25 * 1024 * 1024
-
-LIST_DOCUMENTS = """
-    SELECT d.id, d.url, d.format, d.etag, d.last_modified
-    FROM documents AS d
-    WHERE EXISTS (SELECT 1 FROM sources AS s WHERE s.document_id = d.id)
-    ORDER BY d.id
-"""
-
-INSERT_VERSION = """
-    INSERT INTO document_versions (document_id, content_hash, storage_path)
-    VALUES (%s, %s, %s)
-    ON CONFLICT (document_id, content_hash) DO NOTHING
-"""
-
-MARK_CHECKED = """
-    UPDATE documents SET
-        last_checked_at = now(),
-        last_status_code = %s,
-        last_error = %s,
-        etag = coalesce(%s, etag),
-        last_modified = coalesce(%s, last_modified)
-    WHERE id = %s
-"""
+PAGE_URL = "https://example.go.cr/tramites/licencia"
+PDF_URL = "https://example.go.cr/requisitos.pdf"
+HTML = {"content-type": "text/html; charset=utf-8"}
 
 
-@dataclass(frozen=True)
-class Document:
-    id: int
-    url: str
-    format: str
-    etag: str | None
-    last_modified: str | None
+def client_for(handler: Callable[[httpx.Request], httpx.Response]) -> httpx.Client:
+    return build_client(transport=httpx.MockTransport(handler))
 
 
-@dataclass(frozen=True)
-class Downloaded:
-    content: bytes
-    etag: str | None
-    last_modified: str | None
+def document(url: str = PAGE_URL, format: str = "html", etag: str | None = None) -> Document:
+    return Document(id=1, url=url, format=format, etag=etag, last_modified=None)
 
 
-@dataclass(frozen=True)
-class NotModified:
-    pass
+def test_downloads_a_page_and_keeps_its_etag() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["user-agent"] == USER_AGENT
+        return httpx.Response(200, content=b"<html>v1</html>", headers={**HTML, "etag": '"v1"'})
+
+    outcome = fetch_document(client_for(handler), document())
+
+    assert outcome == Downloaded(content=b"<html>v1</html>", etag='"v1"', last_modified=None)
 
 
-@dataclass(frozen=True)
-class Blocked:
-    reason: str
+def test_asks_whether_the_page_changed_and_accepts_304() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["if-none-match"] == '"v1"'
+        return httpx.Response(304)
+
+    assert fetch_document(client_for(handler), document(etag='"v1"')) == NotModified()
 
 
-@dataclass(frozen=True)
-class Failed:
-    error: str
-    status_code: int | None = None
+def test_http_errors_are_failures() -> None:
+    outcome = fetch_document(client_for(lambda request: httpx.Response(404)), document())
+
+    assert outcome == Failed("HTTP 404", 404)
 
 
-FetchOutcome = Downloaded | NotModified | Blocked | Failed
+def test_network_errors_are_failures() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused")
+
+    outcome = fetch_document(client_for(handler), document())
+
+    assert isinstance(outcome, Failed)
+    assert "ConnectError" in outcome.error
 
 
-def build_client(transport: httpx.BaseTransport | None = None) -> httpx.Client:
-    return httpx.Client(
-        headers={"User-Agent": USER_AGENT},
-        timeout=REQUEST_TIMEOUT_SECONDS,
-        follow_redirects=True,
-        transport=transport,
-    )
+def test_an_error_page_served_instead_of_a_pdf_is_a_failure() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"<html>Not found</html>", headers=HTML)
+
+    outcome = fetch_document(client_for(handler), document(url=PDF_URL, format="pdf"))
+
+    assert outcome == Failed("expected a PDF but got text/html; charset=utf-8", 200)
 
 
-class RobotsPolicy:
-    """Reads robots.txt once per site and answers whether a URL may be fetched."""
+def test_documents_over_the_size_limit_are_failures() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"x" * 100, headers=HTML)
 
-    def __init__(self, client: httpx.Client) -> None:
-        self.client = client
-        # Per site: the parsed rules, or the reason robots.txt could not be read.
-        self.sites: dict[str, RobotFileParser | str] = {}
+    outcome = fetch_document(client_for(handler), document(), max_bytes=10)
 
-    def check(self, url: str) -> str | None:
-        """Return why the URL may not be fetched, or None when it may."""
-        parts = urlsplit(url)
-        origin = f"{parts.scheme}://{parts.netloc}"
-        if origin not in self.sites:
-            self.sites[origin] = self._load(origin)
-        site = self.sites[origin]
-        if isinstance(site, str):
-            return site
-        if not site.can_fetch(USER_AGENT, url):
-            return "disallowed by robots.txt"
-        return None
-
-    def _load(self, origin: str) -> RobotFileParser | str:
-        try:
-            response = self.client.get(f"{origin}/robots.txt")
-        except httpx.HTTPError as error:
-            # Unreachable: be conservative and try again on the next run.
-            return f"robots.txt unreachable: {type(error).__name__}"
-        if response.status_code in (401, 403) or response.status_code >= 500:
-            return f"robots.txt unavailable: HTTP {response.status_code}"
-        parser = RobotFileParser()
-        if response.status_code >= 400:
-            parser.allow_all = True  # No robots.txt: the site sets no rules.
-        else:
-            parser.parse(response.text.splitlines())
-        return parser
+    assert outcome == Failed("larger than 10 bytes", 200)
 
 
-class HostThrottle:
-    """Waits between requests to the same host so the crawler never hammers a site."""
+def test_robots_txt_rules_are_obeyed() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/robots.txt"
+        return httpx.Response(200, text="User-agent: *\nDisallow: /tramites/\n")
 
-    def __init__(self, delay_seconds: float = DELAY_BETWEEN_REQUESTS_SECONDS) -> None:
-        self.delay_seconds = delay_seconds
-        self.last_request: dict[str, float] = {}
+    robots = RobotsPolicy(client_for(handler))
 
-    def wait(self, url: str) -> None:
-        host = urlsplit(url).netloc
-        last = self.last_request.get(host)
-        if last is not None:
-            remaining = self.delay_seconds - (time.monotonic() - last)
-            if remaining > 0:
-                time.sleep(remaining)
-        self.last_request[host] = time.monotonic()
+    assert robots.check(PAGE_URL) == "disallowed by robots.txt"
+    assert robots.check(PDF_URL) is None
 
 
-def content_error(document_format: str, content: bytes, content_type: str) -> str | None:
-    """Catch error pages served with status 200 instead of the expected document."""
-    received = content_type or "no content type"
-    if document_format == "pdf" and b"%PDF-" not in content[:1024]:
-        return f"expected a PDF but got {received}"
-    if document_format == "html" and "html" not in content_type:
-        head = content[:2048].lower()
-        if b"<html" not in head and b"<!doctype html" not in head:
-            return f"expected HTML but got {received}"
-    return None
+def test_a_missing_robots_txt_allows_everything() -> None:
+    robots = RobotsPolicy(client_for(lambda request: httpx.Response(404)))
+
+    assert robots.check(PAGE_URL) is None
 
 
-def fetch_document(
-    client: httpx.Client, document: Document, max_bytes: int = MAX_DOCUMENT_BYTES
-) -> FetchOutcome:
-    """Download one document unless the server says it has not changed."""
-    headers = {}
-    if document.etag:
-        headers["If-None-Match"] = document.etag
-    if document.last_modified:
-        headers["If-Modified-Since"] = document.last_modified
+def test_a_forbidden_robots_txt_blocks_the_site_and_says_why() -> None:
+    robots = RobotsPolicy(client_for(lambda request: httpx.Response(403)))
 
-    try:
-        with client.stream("GET", document.url, headers=headers) as response:
-            if response.status_code == 304:
-                return NotModified()
-            if response.status_code != 200:
-                return Failed(f"HTTP {response.status_code}", response.status_code)
-
-            chunks: list[bytes] = []
-            size = 0
-            for chunk in response.iter_bytes():
-                size += len(chunk)
-                if size > max_bytes:
-                    return Failed(f"larger than {max_bytes} bytes", 200)
-                chunks.append(chunk)
-            content = b"".join(chunks)
-
-            error = content_error(
-                document.format, content, response.headers.get("content-type", "")
-            )
-            if error:
-                return Failed(error, 200)
-            return Downloaded(
-                content=content,
-                etag=response.headers.get("etag"),
-                last_modified=response.headers.get("last-modified"),
-            )
-    except httpx.HTTPError as error:
-        return Failed(f"{type(error).__name__}: {error}")
+    assert robots.check(PAGE_URL) == "robots.txt unavailable: HTTP 403"
 
 
-def record_outcome(
-    conn: psycopg.Connection, storage: Storage, document: Document, outcome: FetchOutcome
-) -> str:
-    """Save the result of one fetch and return its name for the run report."""
-    with conn.transaction(), conn.cursor() as cur:
-        match outcome:
-            case Downloaded():
-                content_hash = hashlib.sha256(outcome.content).hexdigest()
-                key = f"{content_hash}.{document.format}"
-                if not storage.exists(key):
-                    storage.save(key, outcome.content)
-                cur.execute(INSERT_VERSION, (document.id, content_hash, key))
-                is_new = cur.rowcount == 1
-                cur.execute(
-                    MARK_CHECKED, (200, None, outcome.etag, outcome.last_modified, document.id)
-                )
-                return "new_version" if is_new else "unchanged"
-            case NotModified():
-                cur.execute(MARK_CHECKED, (304, None, None, None, document.id))
-                return "not_modified"
-            case Blocked():
-                cur.execute(MARK_CHECKED, (None, outcome.reason, None, None, document.id))
-                return "blocked"
-            case Failed():
-                cur.execute(
-                    MARK_CHECKED, (outcome.status_code, outcome.error, None, None, document.id)
-                )
-                return "failed"
+def test_an_unreachable_robots_txt_blocks_the_site_and_says_why() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused")
+
+    robots = RobotsPolicy(client_for(handler))
+
+    assert robots.check(PAGE_URL) == "robots.txt unreachable: ConnectError"
 
 
-def fetch_all(
-    conn: psycopg.Connection,
-    client: httpx.Client,
-    storage: Storage,
-    throttle: HostThrottle,
-) -> Counter[str]:
-    """Fetch every document referenced by a source. Each result is committed on its own."""
-    robots = RobotsPolicy(client)
-    report: Counter[str] = Counter()
-    # Close this read in its own transaction so each record_outcome below commits by itself.
-    with conn.transaction():
-        documents = [Document(*row) for row in conn.execute(LIST_DOCUMENTS).fetchall()]
+def test_a_download_without_readable_text_is_a_failure() -> None:
+    empty_page = Downloaded(content=b"<html><body></body></html>", etag=None, last_modified=None)
 
-    for document in documents:
-        outcome: FetchOutcome
-        if reason := robots.check(document.url):
-            outcome = Blocked(reason)
-        else:
-            throttle.wait(document.url)
-            outcome = fetch_document(client, document)
-        result = record_outcome(conn, storage, document, outcome)
-        report[result] += 1
-        match outcome:
-            case Failed(error=detail) | Blocked(reason=detail):
-                logger.info("%-12s %s (%s)", result, document.url, detail)
-            case _:
-                logger.info("%-12s %s", result, document.url)
+    outcome = prepare_version("html", empty_page)
 
-    return report
+    assert outcome == Failed("extraction failed: no main text found in the page", 200)
+
+
+def test_a_new_version_is_recorded_only_when_the_text_changes(
+    conn: psycopg.Connection, tmp_path: Path
+) -> None:
+    storage = LocalStorage(tmp_path)
+    # Same text with different bytes, like a page that embeds a token on every visit.
+    first_visit = NewVersion(b"<html>token=1</html>", "Cédula vigente", '"v1"', None)
+    second_visit = NewVersion(b"<html>token=2</html>", "Cédula vigente", '"v2"', None)
+    changed = NewVersion(b"<html>token=3</html>", "Cédula y dictamen médico", '"v3"', None)
+
+    with conn.transaction(force_rollback=True):
+        (document_id,) = conn.execute(
+            "INSERT INTO documents (url, format) VALUES ('https://example.test/page', 'html') "
+            "RETURNING id"
+        ).fetchone()
+        doc = Document(document_id, "https://example.test/page", "html", None, None)
+
+        assert record_outcome(conn, storage, doc, first_visit) == "new_version"
+        assert record_outcome(conn, storage, doc, second_visit) == "unchanged"
+        assert record_outcome(conn, storage, doc, NotModified()) == "not_modified"
+        assert record_outcome(conn, storage, doc, changed) == "new_version"
+
+        versions = conn.execute(
+            "SELECT extracted_text, review_status, storage_path FROM document_versions "
+            "WHERE document_id = %s ORDER BY id",
+            (document_id,),
+        ).fetchall()
+        assert [(text, status) for text, status, _ in versions] == [
+            ("Cédula vigente", "pending"),
+            ("Cédula y dictamen médico", "pending"),
+        ]
+        # Only the originals of new versions are stored.
+        assert sorted(path.name for path in tmp_path.iterdir()) == sorted(
+            key for _, _, key in versions
+        )
+        assert conn.execute(
+            "SELECT etag, last_status_code FROM documents WHERE id = %s", (document_id,)
+        ).fetchone() == ('"v3"', 200)

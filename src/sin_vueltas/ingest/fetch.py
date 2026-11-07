@@ -4,7 +4,7 @@ Rules the crawler follows:
 - It identifies itself with a User-Agent that links to the repository.
 - It obeys robots.txt and waits between requests to the same host.
 - It asks the server whether a document changed (ETag / Last-Modified) before downloading.
-- Files are stored by content hash, so identical content is never stored twice.
+- A new version is recorded only when the extracted text changes, not the raw bytes.
 - A failed download never deletes anything: the last approved version keeps serving answers.
 """
 
@@ -13,12 +13,14 @@ import logging
 import time
 from collections import Counter
 from dataclasses import dataclass
+from functools import cached_property
 from urllib.parse import urlsplit
 from urllib.robotparser import RobotFileParser
 
 import httpx
 import psycopg
 
+from sin_vueltas.ingest.extract import ExtractionError, extract_text, text_fingerprint
 from sin_vueltas.ingest.storage import Storage
 
 logger = logging.getLogger(__name__)
@@ -36,9 +38,10 @@ LIST_DOCUMENTS = """
 """
 
 INSERT_VERSION = """
-    INSERT INTO document_versions (document_id, content_hash, storage_path)
-    VALUES (%s, %s, %s)
-    ON CONFLICT (document_id, content_hash) DO NOTHING
+    INSERT INTO document_versions
+        (document_id, content_hash, storage_path, extracted_text, text_hash)
+    VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT (document_id, text_hash) DO NOTHING
 """
 
 MARK_CHECKED = """
@@ -69,6 +72,24 @@ class Downloaded:
 
 
 @dataclass(frozen=True)
+class NewVersion:
+    """A downloaded document together with its extracted text."""
+
+    content: bytes
+    text: str
+    etag: str | None
+    last_modified: str | None
+
+    @cached_property
+    def content_hash(self) -> str:
+        return hashlib.sha256(self.content).hexdigest()
+
+    @cached_property
+    def text_hash(self) -> str:
+        return text_fingerprint(self.text)
+
+
+@dataclass(frozen=True)
 class NotModified:
     pass
 
@@ -84,7 +105,9 @@ class Failed:
     status_code: int | None = None
 
 
-FetchOutcome = Downloaded | NotModified | Blocked | Failed
+# What one HTTP request returns, and what gets recorded for a document.
+FetchResult = Downloaded | NotModified | Failed
+Outcome = NewVersion | NotModified | Blocked | Failed
 
 
 def build_client(transport: httpx.BaseTransport | None = None) -> httpx.Client:
@@ -164,7 +187,7 @@ def content_error(document_format: str, content: bytes, content_type: str) -> st
 
 def fetch_document(
     client: httpx.Client, document: Document, max_bytes: int = MAX_DOCUMENT_BYTES
-) -> FetchOutcome:
+) -> FetchResult:
     """Download one document unless the server says it has not changed."""
     headers = {}
     if document.etag:
@@ -202,19 +225,37 @@ def fetch_document(
         return Failed(f"{type(error).__name__}: {error}")
 
 
+def prepare_version(document_format: str, downloaded: Downloaded) -> NewVersion | Failed:
+    """Extract the text of a download, which decides whether it is a new version."""
+    try:
+        text = extract_text(document_format, downloaded.content)
+    except ExtractionError as error:
+        return Failed(f"extraction failed: {error}", 200)
+    return NewVersion(
+        content=downloaded.content,
+        text=text,
+        etag=downloaded.etag,
+        last_modified=downloaded.last_modified,
+    )
+
+
 def record_outcome(
-    conn: psycopg.Connection, storage: Storage, document: Document, outcome: FetchOutcome
+    conn: psycopg.Connection, storage: Storage, document: Document, outcome: Outcome
 ) -> str:
     """Save the result of one fetch and return its name for the run report."""
     with conn.transaction(), conn.cursor() as cur:
         match outcome:
-            case Downloaded():
-                content_hash = hashlib.sha256(outcome.content).hexdigest()
-                key = f"{content_hash}.{document.format}"
-                if not storage.exists(key):
-                    storage.save(key, outcome.content)
-                cur.execute(INSERT_VERSION, (document.id, content_hash, key))
+            case NewVersion():
+                key = f"{outcome.content_hash}.{document.format}"
+                cur.execute(
+                    INSERT_VERSION,
+                    (document.id, outcome.content_hash, key, outcome.text, outcome.text_hash),
+                )
                 is_new = cur.rowcount == 1
+                # Only keep the original file when its text is new. If saving fails,
+                # the transaction rolls back and the version is not recorded either.
+                if is_new and not storage.exists(key):
+                    storage.save(key, outcome.content)
                 cur.execute(
                     MARK_CHECKED, (200, None, outcome.etag, outcome.last_modified, document.id)
                 )
@@ -246,12 +287,16 @@ def fetch_all(
         documents = [Document(*row) for row in conn.execute(LIST_DOCUMENTS).fetchall()]
 
     for document in documents:
-        outcome: FetchOutcome
+        outcome: Outcome
         if reason := robots.check(document.url):
             outcome = Blocked(reason)
         else:
             throttle.wait(document.url)
-            outcome = fetch_document(client, document)
+            fetched = fetch_document(client, document)
+            if isinstance(fetched, Downloaded):
+                outcome = prepare_version(document.format, fetched)
+            else:
+                outcome = fetched
         result = record_outcome(conn, storage, document, outcome)
         report[result] += 1
         match outcome:
