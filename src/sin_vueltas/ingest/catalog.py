@@ -1,13 +1,20 @@
 """Load and validate the source catalog (data/sources.yaml)."""
 
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal, NamedTuple, Self
 from urllib.parse import urldefrag
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 DEFAULT_CATALOG_PATH = Path("data/sources.yaml")
+
+
+class DocumentSpec(NamedTuple):
+    """How the crawler downloads and reads one page or PDF."""
+
+    format: str
+    extraction: str
 
 
 class UniqueKeyLoader(yaml.SafeLoader):
@@ -35,6 +42,8 @@ class Source(BaseModel):
     url: str
     format: Literal["html", "pdf", "online_service"]
     status: Literal["ok", "review"]
+    # "full" keeps collapsed sections (FAQ accordions) that main-content detection drops.
+    extraction: Literal["main", "full"] = "main"
     note: str | None = None
 
     @field_validator("url")
@@ -43,6 +52,12 @@ class Source(BaseModel):
         if not url.startswith("https://"):
             raise ValueError(f"source URLs must use https: {url}")
         return url
+
+    @model_validator(mode="after")
+    def require_html_for_full_extraction(self) -> Self:
+        if self.extraction == "full" and self.format != "html":
+            raise ValueError(f"extraction: full only applies to HTML pages: {self.url}")
+        return self
 
     @property
     def is_crawlable(self) -> bool:
@@ -84,22 +99,24 @@ class Catalog(BaseModel):
         ids = [procedure.id for procedure in self.procedures]
         if len(ids) != len(set(ids)):
             raise ValueError("procedure ids must be unique")
-        self.documents()  # Raises if one page is listed with two formats.
+        self.documents()  # Raises if one page is listed with different settings.
         return self
 
-    def documents(self) -> dict[str, str]:
-        """Map each crawlable document URL to its format."""
-        formats: dict[str, str] = {}
+    def documents(self) -> dict[str, DocumentSpec]:
+        """Map each crawlable document URL to how it is downloaded and read."""
+        specs: dict[str, DocumentSpec] = {}
         for procedure in self.procedures:
             for source in procedure.sources:
                 if not source.is_crawlable:
                     continue
-                known = formats.setdefault(source.document_url, source.format)
-                if known != source.format:
+                spec = DocumentSpec(source.format, source.extraction)
+                known = specs.setdefault(source.document_url, spec)
+                if known != spec:
                     raise ValueError(
-                        f"{source.document_url} is listed as both {known} and {source.format}"
+                        f"{source.document_url} is listed as both "
+                        f"{known.format}/{known.extraction} and {spec.format}/{spec.extraction}"
                     )
-        return formats
+        return specs
 
 
 def load_catalog(path: Path = DEFAULT_CATALOG_PATH) -> Catalog:

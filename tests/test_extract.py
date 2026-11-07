@@ -28,6 +28,31 @@ def page(token: str) -> bytes:
 </body></html>""".encode()
 
 
+def faq_page() -> bytes:
+    """A FAQ page whose answers sit in collapsed accordion sections."""
+    return """<!doctype html>
+<html><head><title>Marchamo</title><script>var token = "abc123";</script></head>
+<body>
+  <header><a href="/">Inicio</a></header>
+  <nav><ul><li>Seguros</li><li>Contacto</li></ul></nav>
+  <main>
+    <h1>Marchamo</h1>
+    <div class="accordion">
+      <button>¿Cuáles son los requisitos para el pago?</button>
+      <div class="collapse" style="display: none">
+        <ul>
+          <li>Cédula de identidad del pagador</li>
+          <li>Inspección <b>vehicular</b> vigente</li>
+        </ul>
+      </div>
+      <button>¿Cuáles son los requisitos para el pago de incapacidad?</button>
+      <div class="collapse"><p>Certificación de la CCSS.</p></div>
+    </div>
+  </main>
+  <footer>Tipo de cambio: compra 447,00</footer>
+</body></html>""".encode()
+
+
 def make_pdf(text: str) -> bytes:
     """Build a minimal one-page PDF with ASCII text, without extra dependencies."""
     stream = f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode()
@@ -73,6 +98,28 @@ def test_per_visit_tokens_do_not_change_the_fingerprint() -> None:
     second = extract_text("html", page(token="second-visit"))
 
     assert text_fingerprint(first) == text_fingerprint(second)
+
+
+def test_full_mode_keeps_collapsed_sections() -> None:
+    text = extract_text("html", faq_page(), mode="full")
+
+    assert "¿Cuáles son los requisitos para el pago?" in text
+    assert "- Cédula de identidad del pagador" in text
+    assert "- Inspección vehicular vigente" in text
+    assert "Certificación de la CCSS." in text
+
+
+def test_full_mode_drops_page_chrome() -> None:
+    text = extract_text("html", faq_page(), mode="full")
+
+    for chrome in ["Inicio", "Contacto", "Tipo de cambio", "abc123"]:
+        assert chrome not in text
+
+
+def test_full_mode_reads_pages_that_declare_another_charset() -> None:
+    page = '<html><head><meta charset="windows-1252"></head><body><p>Cédula</p></body></html>'
+
+    assert extract_text("html", page.encode("cp1252"), mode="full") == "Cédula"
 
 
 def test_html_without_content_is_an_error() -> None:
