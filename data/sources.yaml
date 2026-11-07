@@ -323,10 +323,6 @@ procedures:
         format: html
         status: ok
         note: Cuadro oficial de tasas anuales máximas; se actualiza en enero y julio
-      - url: https://www.bccr.fi.cr/content/dam/bccr/comunicacion-y-prensa/comunicados-de-prensa/cp-bccr-017-2026-tasas-maximas-interes-julio-2026.pdf
-        format: pdf
-        status: ok
-        note: Comunicado CP-BCCR-017-2026 (segundo semestre de 2026); cambia cada semestre
       - url: https://www.bccr.fi.cr/cr/es/noticias/listado-de-noticias/2026/nuevas-tasas-de-interes-anuales-maximas-para-creditos-y-microcreditos-3-07-2026.html
         format: html
         status: ok
