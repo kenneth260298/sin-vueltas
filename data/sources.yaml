@@ -173,6 +173,7 @@ procedures:
       - url: https://www.grupoins.com/seguros-personas/marchamo/seguro-obligatorio-automotor-marchamo/
         format: html
         status: ok
+        extraction: full
         note: Payment requirements, replacements and vehicles missing from the INS database
       - url: https://www.grupoins.com/ins-noticias/noticias/asi-se-vera-el-nuevo-marchamo-digital/
         format: html

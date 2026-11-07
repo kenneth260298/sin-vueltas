@@ -43,7 +43,7 @@ def test_sections_of_one_page_are_one_document() -> None:
         procedure("second", {**PAGE, "url": "https://example.go.cr/page#second"}),
     )
 
-    assert result.documents() == {"https://example.go.cr/page": "html"}
+    assert result.documents() == {"https://example.go.cr/page": ("html", "main")}
 
 
 def test_online_services_are_not_documents() -> None:
@@ -63,8 +63,28 @@ def test_rejects_plain_http() -> None:
 
 
 def test_rejects_one_page_with_two_formats() -> None:
-    with pytest.raises(ValidationError, match="both html and pdf"):
+    with pytest.raises(ValidationError, match="both html/main and pdf/main"):
         catalog(procedure("first", PAGE), procedure("second", {**PAGE, "format": "pdf"}))
+
+
+def test_extraction_mode_is_part_of_the_document() -> None:
+    accordion = {**PAGE, "extraction": "full"}
+
+    assert catalog(procedure("first", accordion)).documents() == {
+        "https://example.go.cr/page": ("html", "full")
+    }
+
+
+def test_rejects_one_page_with_two_extraction_modes() -> None:
+    with pytest.raises(ValidationError, match="both html/main and html/full"):
+        catalog(procedure("first", PAGE), procedure("second", {**PAGE, "extraction": "full"}))
+
+
+def test_full_extraction_only_applies_to_html() -> None:
+    pdf = {**PAGE, "url": "https://example.go.cr/doc.pdf", "format": "pdf", "extraction": "full"}
+
+    with pytest.raises(ValidationError, match="only applies to HTML"):
+        catalog(procedure("first", pdf))
 
 
 def test_rejects_an_empty_catalog() -> None:

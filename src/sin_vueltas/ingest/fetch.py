@@ -20,7 +20,12 @@ from urllib.robotparser import RobotFileParser
 import httpx
 import psycopg
 
-from sin_vueltas.ingest.extract import ExtractionError, extract_text, text_fingerprint
+from sin_vueltas.ingest.extract import (
+    ExtractionError,
+    ExtractionMode,
+    extract_text,
+    text_fingerprint,
+)
 from sin_vueltas.ingest.storage import Storage
 
 logger = logging.getLogger(__name__)
@@ -31,7 +36,7 @@ DELAY_BETWEEN_REQUESTS_SECONDS = 2.0
 MAX_DOCUMENT_BYTES = 25 * 1024 * 1024
 
 LIST_DOCUMENTS = """
-    SELECT d.id, d.url, d.format, d.etag, d.last_modified
+    SELECT d.id, d.url, d.format, d.etag, d.last_modified, d.extraction
     FROM documents AS d
     WHERE EXISTS (SELECT 1 FROM sources AS s WHERE s.document_id = d.id)
     ORDER BY d.id
@@ -62,6 +67,7 @@ class Document:
     format: str
     etag: str | None
     last_modified: str | None
+    extraction: ExtractionMode = "main"
 
 
 @dataclass(frozen=True)
@@ -225,10 +231,12 @@ def fetch_document(
         return Failed(f"{type(error).__name__}: {error}")
 
 
-def prepare_version(document_format: str, downloaded: Downloaded) -> NewVersion | Failed:
+def prepare_version(
+    document_format: str, downloaded: Downloaded, extraction: ExtractionMode = "main"
+) -> NewVersion | Failed:
     """Extract the text of a download, which decides whether it is a new version."""
     try:
-        text = extract_text(document_format, downloaded.content)
+        text = extract_text(document_format, downloaded.content, extraction)
     except ExtractionError as error:
         return Failed(f"extraction failed: {error}", 200)
     return NewVersion(
@@ -294,7 +302,7 @@ def fetch_all(
             throttle.wait(document.url)
             fetched = fetch_document(client, document)
             if isinstance(fetched, Downloaded):
-                outcome = prepare_version(document.format, fetched)
+                outcome = prepare_version(document.format, fetched, document.extraction)
             else:
                 outcome = fetched
         result = record_outcome(conn, storage, document, outcome)

@@ -27,9 +27,17 @@ UPSERT_PROCEDURE = """
 """
 
 UPSERT_DOCUMENT = """
-    INSERT INTO documents (url, format)
-    VALUES (%s, %s)
-    ON CONFLICT (url) DO UPDATE SET format = EXCLUDED.format
+    INSERT INTO documents (url, format, extraction)
+    VALUES (%s, %s, %s)
+    ON CONFLICT (url) DO UPDATE SET
+        format = EXCLUDED.format,
+        extraction = EXCLUDED.extraction,
+        -- A new extraction mode needs a fresh download: forget the cache validators
+        -- so the server cannot answer 304 Not Modified.
+        etag = CASE WHEN documents.extraction = EXCLUDED.extraction THEN documents.etag END,
+        last_modified = CASE
+            WHEN documents.extraction = EXCLUDED.extraction THEN documents.last_modified
+        END
     RETURNING id
 """
 
@@ -71,8 +79,8 @@ def sync_catalog(conn: psycopg.Connection, catalog: Catalog) -> SyncResult:
     kept_urls: list[str] = []
 
     with conn.transaction(), conn.cursor() as cur:
-        for url, document_format in catalog.documents().items():
-            cur.execute(UPSERT_DOCUMENT, (url, document_format))
+        for url, spec in catalog.documents().items():
+            cur.execute(UPSERT_DOCUMENT, (url, spec.format, spec.extraction))
             row = cur.fetchone()
             assert row is not None  # RETURNING always yields a row here.
             document_ids[url] = row[0]
