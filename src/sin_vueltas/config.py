@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,6 +10,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://app:app@localhost:5432/sinvueltas"
     # Where downloaded originals are stored locally (ignored by Git).
     raw_storage_dir: Path = Path("data/raw")
+
+    # Embeddings. The key only comes from the environment or .env, never from code.
+    openai_api_key: SecretStr | None = None
+    embedding_model: str = "text-embedding-3-small"
 
 
 settings = Settings()

@@ -7,11 +7,14 @@ import sys
 from pathlib import Path
 
 import psycopg
+from openai import OpenAI
 
 from sin_vueltas.config import settings
 from sin_vueltas.ingest.capture import CaptureError, capture_file
 from sin_vueltas.ingest.catalog import DEFAULT_CATALOG_PATH, load_catalog
+from sin_vueltas.ingest.embed import OpenAIEmbedder
 from sin_vueltas.ingest.fetch import HostThrottle, build_client, fetch_all
+from sin_vueltas.ingest.index import build_index
 from sin_vueltas.ingest.review import (
     ReviewError,
     approve,
@@ -22,6 +25,10 @@ from sin_vueltas.ingest.review import (
 )
 from sin_vueltas.ingest.storage import LocalStorage
 from sin_vueltas.ingest.sync import sync_catalog
+
+
+class ConfigurationError(Exception):
+    """A setting the command needs is missing."""
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -41,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     capture.add_argument("url", help="the document URL as it appears in sources.yaml")
     capture.add_argument("file", type=Path, help="the saved HTML or PDF file")
+
+    index = commands.add_parser("index", help="chunk approved versions and embed them")
+    index.add_argument(
+        "--no-embed", action="store_true", help="only chunk; do not call the embedding API"
+    )
 
     review = commands.add_parser("review", help="list, inspect, approve or reject versions")
     actions = review.add_subparsers(dest="action", required=True)
@@ -78,6 +90,13 @@ def run_review(conn: psycopg.Connection, args: argparse.Namespace) -> None:
         print(f"Rejected {len(args.version_ids)} versions as {args.by}")
 
 
+def openai_embedder() -> OpenAIEmbedder:
+    if settings.openai_api_key is None:
+        raise ConfigurationError("OPENAI_API_KEY is not set; add it to your .env file")
+    client = OpenAI(api_key=settings.openai_api_key.get_secret_value())
+    return OpenAIEmbedder(client, settings.embedding_model)
+
+
 def main() -> None:
     args = build_parser().parse_args()
     # Windows consoles and pipes may not encode every character (for example ₡).
@@ -102,9 +121,18 @@ def main() -> None:
                 captured = capture_file(conn, storage, args.url, args.file)
                 status = "new pending version" if captured.is_new else "same text as before"
                 print(f"{status}: {captured.url} ({captured.chars} chars)")
+            elif args.command == "index":
+                embedder = None if args.no_embed else openai_embedder()
+                result = build_index(conn, embedder)
+                print(
+                    f"Removed {result.removed_chunks} stale chunks. "
+                    f"Chunked {result.chunked_versions} versions into {result.new_chunks} chunks. "
+                    f"Embedded {result.embedded_chunks} chunks "
+                    f"(~{result.embedded_chars // 4:,} tokens)."
+                )
             elif args.command == "review":
                 run_review(conn, args)
-    except (CaptureError, ReviewError) as error:
+    except (CaptureError, ReviewError, ConfigurationError) as error:
         raise SystemExit(f"error: {error}") from error
 
 
