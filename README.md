@@ -1,121 +1,116 @@
 # Sin Vueltas
 
-![CI](https://github.com/kenneth260298/sin-vueltas/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/kenneth260298/sin-vueltas/actions/workflows/ci.yml/badge.svg)](https://github.com/kenneth260298/sin-vueltas/actions/workflows/ci.yml)
 
-**An AI assistant that answers questions about everyday procedures in Costa Rica (driver's license, passport, loans, social security) with answers tailored to your situation and every requirement cited to its official source.**
+The data layer of a RAG assistant for Costa Rican government procedures: it collects official pages and PDFs, keeps a reviewed version history, and turns approved text into a retrieval-ready index in PostgreSQL + pgvector.
 
-## The problem
+🔗 [Landing page](https://kenneth260298.github.io/sin-vueltas/) · [English](https://kenneth260298.github.io/sin-vueltas/en/)
 
-The information people need for everyday procedures is public, but it is scattered across dozens of official websites and PDFs. And the answer often depends on who is asking: applying for a loan as a salaried employee requires different documents than applying as a self-employed worker. Most people find out at the counter.
+## Scope
 
-## What it does
+This repository covers ingestion, human review, chunking and embeddings. Retrieval and answer generation are designed but out of scope; see [Future work](#future-work).
 
-You ask a question in plain Spanish, for example *"¿Qué necesito para pedir un préstamo?"*. Before answering, the assistant asks what changes the answer (salaried, self-employed or retired?). Then it returns:
+| | |
+|---|---|
+| Catalog | 21 procedures, 52 official sources, 37 crawlable documents |
+| Index | 30 approved versions → 637 chunks |
+| Embeddings | `text-embedding-3-small` at 768 dimensions, ~138k tokens (about $0.003 for the full corpus) |
 
-1. A step-by-step checklist tailored to your profile.
-2. Every requirement cited to the official source it came from, with the date it was last verified.
-3. Exact calculations where they matter, such as a loan's monthly payment or whether an interest rate is above the legal maximum.
-4. The order in which related procedures must be done.
-
-If the official sources cannot back an answer, it says so and points you to the right institution.
-
-## Engineering highlights
-
-| Area | Approach |
-| --- | --- |
-| **Profile first** | The agent detects missing information and asks before answering, instead of guessing |
-| **Deterministic tools** | Calculations run in code, not in the model: loan payments, legal maximum interest rates, exchange rates |
-| **Fresh data with human approval** | A weekly crawler detects changes in official sources. The agent summarizes each change and pauses until a human approves it. Every approval is audited |
-| **Hybrid retrieval** | pgvector similarity search plus Postgres full-text search in Spanish, fused with Reciprocal Rank Fusion |
-| **MCP server** | The same tools are exposed through the Model Context Protocol, so any MCP client can use them |
-| **Evaluation** | A golden set of real questions with known answers, run in CI on every pull request |
-| **Security** | Only allowlisted official domains are crawled, and crawled content is treated as data, never as instructions. The public bot uses a read-only database role. No personal data is stored |
-| **Cost guardrails** | Scale-to-zero hosting, daily query caps, response caching and a budget kill switch |
-
-## Architecture (planned)
+## Architecture
 
 ```mermaid
 flowchart LR
-    U["User<br/>web chat"] --> API["FastAPI<br/>Azure Container Apps"]
-    API --> AG["LangGraph agent"]
-    AG --> S["Hybrid search<br/>pgvector + full-text"]
-    AG --> T["Deterministic tools<br/>loan payment, max legal rate, FX"]
-    S --> DB[("Postgres + pgvector<br/>Neon")]
-    EXT["MCP clients"] --> MCP["MCP server"]
-    MCP --> S
-    MCP --> T
-    CR["Weekly crawler<br/>Container Apps Job"] --> CD{"Source changed?"}
-    CD -- yes --> HA["Human approval<br/>+ audit log"]
-    HA --> DB
-    AG -. traces .-> ML["MLflow<br/>Databricks"]
+    Y[sources.yaml] -->|sync| DB[(procedures<br>sources<br>documents)]
+    DB -->|fetch| R[data/raw]
+    H[Saved page] -->|capture| R
+    R -->|extract| V[document_versions<br>pending]
+    V -->|review| A[approved]
+    A -->|index: chunk| C[chunks]
+    C -->|index: embed| E[(pgvector<br>HNSW + Spanish FTS)]
 ```
 
-## Tech stack
+| Command | What it does |
+|---|---|
+| `sync` | Loads the validated YAML catalog into `procedures`, `sources` and `documents`. |
+| `fetch` | Downloads each document politely and stores a new version only when its extracted text changed. |
+| `capture <url> <file>` | Records a page saved from a browser, for sites that reject bots. |
+| `review list \| show \| approve \| reject` | Human review: diff a version against the approved one, then approve or reject it. |
+| `index [--no-embed]` | Removes stale chunks, chunks newly approved versions and embeds what is missing. |
 
-| Layer | Technology |
-| --- | --- |
-| Language and API | Python 3.12, FastAPI, Pydantic, uv |
-| Ingestion | httpx, trafilatura, PyMuPDF, pdfplumber |
-| Database | PostgreSQL with pgvector (Neon in production, Docker locally) |
-| Agent | LangGraph with a Postgres checkpointer |
-| Tools protocol | Model Context Protocol (official Python SDK) |
-| Evaluation and tracing | pytest, MLflow on Databricks |
-| Hosting | Azure Container Apps and Container Apps Jobs |
-| Secrets | Azure Key Vault with managed identity |
-| CI/CD | GitHub Actions with OIDC (no stored cloud credentials) |
-| Web | React, TypeScript, Vite |
+All commands run as `uv run python -m sin_vueltas.ingest <command>` and are idempotent: running them again never duplicates data or repeats paid work.
+
+## Design decisions
+
+- **Version by text, not bytes.** Pages embed dynamic tokens (ASP.NET ViewState, nonces), so hashing raw bytes produced false updates. Versions are keyed by a hash of the extracted text, with `UNIQUE (document_id, text_hash)`.
+- **Human in the loop.** Every version starts as `pending`; nothing reaches the index until approved. A partial unique index guarantees at most one approved version per document.
+- **Polite crawling.** robots.txt, an identifying User-Agent, 2 s per host and conditional requests (ETag / If-Modified-Since). Blocked sites are captured manually by a person; the crawler never disguises itself.
+- **Two extraction modes.** `main` (trafilatura) for article-like pages, `full` (lxml without navigation chrome) for accordion pages. PDFs use pdfplumber (MIT), chosen over PyMuPDF (AGPL).
+- **Section- and question-aware chunking.** Chunks follow Markdown headings and numbered FAQ questions, so a question stays with its answer. Table-of-contents lines and form leaders are dropped.
+- **Contextual embeddings.** Each chunk is embedded with its procedure names and heading path prepended. The `embedding_model` column lets a model change re-embed only what it must.
+- **One database for both retrievers.** `chunks.embedding` (HNSW, cosine) and `chunks.search_tsv` (GIN, Spanish full-text) live side by side, ready for hybrid search.
+- **Safe by default.** Secrets come only from `.env` (`SecretStr`), and crawled content is treated as data, never as instructions.
 
 ## Getting started
 
-Requirements: [uv](https://docs.astral.sh/uv/) and Docker.
+Requirements: Python 3.12, [uv](https://docs.astral.sh/uv/) and Docker.
 
 ```bash
 git clone https://github.com/kenneth260298/sin-vueltas.git
 cd sin-vueltas
-
-cp .env.example .env          # Windows CMD: copy .env.example .env
-docker compose up -d
-docker compose exec db psql -U app -d sinvueltas -c "CREATE EXTENSION IF NOT EXISTS vector;"
-
 uv sync
-uv run uvicorn sin_vueltas.main:app --reload    # http://localhost:8000/docs
+docker compose up -d
+cp .env.example .env            # Windows: copy .env.example .env, then set OPENAI_API_KEY
+uv run alembic upgrade head
+
+uv run python -m sin_vueltas.ingest sync
+uv run python -m sin_vueltas.ingest fetch
+uv run python -m sin_vueltas.ingest review list
+uv run python -m sin_vueltas.ingest review approve <version ids>
+uv run python -m sin_vueltas.ingest index
 ```
 
-Run the checks:
+Run `index --no-embed` first to inspect the chunks without calling the embedding API.
+
+## Tests and CI
 
 ```bash
+uv run ruff check
 uv run pytest
-uv run ruff check .
-uv run ruff format --check .
 ```
+
+Database tests run inside a transaction that is rolled back, so they never touch your data; they are skipped locally when Postgres is not running. CI runs ruff, a migration upgrade/downgrade/upgrade roundtrip and the full test suite against Postgres with pgvector on every pull request.
 
 ## Project structure
 
 ```
-sin-vueltas/
-├── src/sin_vueltas/
-│   ├── main.py        # API
-│   ├── config.py      # settings loaded from .env
-│   ├── ingest/        # download and extract official sources
-│   └── db/            # database access
-├── tests/
-├── data/              # list of procedures and their official sources
-├── docker-compose.yml # local Postgres with pgvector
-└── .github/workflows/ # CI
+data/sources.yaml          Source catalog (procedures and their official URLs)
+migrations/                Alembic migrations 0001–0005
+src/sin_vueltas/
+  config.py                Settings from the environment / .env
+  main.py                  FastAPI app (health check)
+  ingest/
+    catalog.py  sync.py    Catalog validation and database sync
+    fetch.py  extract.py   Polite crawler and text extraction
+    capture.py  review.py  Manual capture and human review
+    chunk.py  embed.py  index.py   Chunking, embeddings and indexing
+tests/                     Unit and database tests
+docs/                      Landing page (GitHub Pages)
 ```
 
-## Principles
+## Future work
 
-- **Official sources only.** Every requirement links to its source and shows when it was last verified.
-- **Information, not advice.** The assistant explains requirements and does the math. It does not give legal or financial advice and does not recommend banks or products.
-- **No personal data.** It never asks for or stores ID numbers or other personal information.
+The schema already holds both search indexes, so the next steps need no migrations:
 
-## En español
+1. Hybrid retrieval (vector + Spanish full-text, fused with RRF) behind a `/search` endpoint.
+2. Profile-aware requirements (salaried, self-employed, retired, minor) extracted with an LLM and reviewed by a person.
+3. A LangGraph agent that answers with verified citations and guardrails.
+4. A 40-question golden set evaluated with MLflow on Databricks.
+5. Deployment on Azure Container Apps with Neon, plus a weekly crawl job.
 
-Sin Vueltas es un asistente que responde preguntas sobre trámites en Costa Rica, como licencia, pasaporte, préstamos o la CCSS. Primero pregunta lo que cambia la respuesta (por ejemplo, si eres asalariado o independiente) y luego te da una lista de pasos a tu medida. Cada requisito va citado a su fuente oficial, con la fecha en que se verificó.
+## Disclaimer
 
-No es un sitio del gobierno ni da asesoría legal o financiera. Confirma siempre con la institución correspondiente.
+Sin Vueltas is an independent project, not affiliated with the TSE, CCSS, BCR, Ministerio de Hacienda or any other institution. Official requirements are always at the cited source.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+See [LICENSE](LICENSE).
