@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sin Vueltas — Costa Rican paperwork, without the runaround</title>
-<meta name="description" content="AI assistant that tells you what you need for your paperwork in Costa Rica, based on your situation and always with the official source.">
+<meta name="description" content="Data pipeline and search index for a Costa Rican paperwork assistant, grounded only in official sources.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Sin Vueltas — Costa Rican paperwork, without the runaround">
-<meta property="og:description" content="AI assistant that tells you what you need for your paperwork in Costa Rica, based on your situation and always with the official source.">
+<meta property="og:description" content="Data pipeline and search index for a Costa Rican paperwork assistant, grounded only in official sources.">
 <meta property="og:url" content="https://kenneth260298.github.io/sin-vueltas/en/">
 <link rel="alternate" hreflang="en" href="https://kenneth260298.github.io/sin-vueltas/">
 <link rel="alternate" hreflang="en" href="https://kenneth260298.github.io/sin-vueltas/en/">
@@ -33,7 +33,7 @@ a{color:#0E7A5F}a:hover{color:#0A5C47}
 </a>
 <nav aria-label="Main" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 24px; font-size: 15px;">
 <a href="#como-funciona" style="color: #4A5A55; text-decoration: none; padding: 11px 0;">How it works</a>
-<a href="#avance" style="color: #4A5A55; text-decoration: none; padding: 11px 0;">Progress</a>
+<a href="#avance" style="color: #4A5A55; text-decoration: none; padding: 11px 0;">Status</a>
 <a href="#tecnologia" style="color: #4A5A55; text-decoration: none; padding: 11px 0;">Tech</a>
 <a href="../" lang="es" style="color: #4A5A55; text-decoration: none; padding: 11px 0;">Español</a>
 <a href="https://github.com/kenneth260298/sin-vueltas" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; box-sizing: border-box; padding: 0 16px; border: 1px solid #CBD5D0; border-radius: 10px; color: #0B1F1A; text-decoration: none; font-weight: 500;">GitHub
@@ -48,10 +48,10 @@ a{color:#0E7A5F}a:hover{color:#0A5C47}
 <div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
 <span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: #FEF3C7; color: #92400E; font-size: 14px; font-weight: 500;">
 <span style="width: 8px; height: 8px; border-radius: 50%; background: #B45309;"></span>
-Work in progress · Open source
+Open-source project
 </span>
 <h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: clamp(2.5rem, 5vw, 4rem); line-height: 1.05; letter-spacing: -0.025em; font-weight: 700;">Costa Rican paperwork, without the runaround.</h1>
-<p style="margin: 0; font-size: 20px; line-height: 1.6; color: #4A5A55; max-width: 34em;">An AI assistant that tells you exactly what you need for your paperwork based on your situation, always with a link to the official source.</p>
+<p style="margin: 0; font-size: 20px; line-height: 1.6; color: #4A5A55; max-width: 34em;">The foundation of an AI assistant for Costa Rican paperwork: it collects, reviews and indexes official information so every answer can cite its source.</p>
 <div style="display: flex; flex-wrap: wrap; gap: 12px;">
 <a href="#como-funciona" style="display: inline-flex; align-items: center; gap: 8px; min-height: 48px; box-sizing: border-box; padding: 0 22px; border-radius: 10px; background: #0E7A5F; color: #FFFFFF; font-weight: 600; text-decoration: none;">How it works</a>
 <a href="https://github.com/kenneth260298/sin-vueltas" style="display: inline-flex; align-items: center; gap: 8px; min-height: 48px; box-sizing: border-box; padding: 0 22px; border-radius: 10px; background: #FFFFFF; border: 1px solid #CBD5D0; color: #0B1F1A; font-weight: 600; text-decoration: none;">View the code on GitHub
@@ -69,7 +69,7 @@ Work in progress · Open source
 </span>
 Sin Vueltas
 </span>
-<span style="font-size: 13px; color: #5B6B66;">Illustrative example</span>
+<span style="font-size: 13px; color: #5B6B66;">Assistant concept</span>
 </div>
 <div style="align-self: flex-end; max-width: 85%; background: #0E7A5F; color: #FFFFFF; padding: 12px 16px; border-radius: 16px 16px 4px 16px; font-size: 15px; line-height: 1.5;">I need to renew my driver's license. What do I bring?</div>
 <div style="align-self: flex-start; max-width: 92%; background: #F1F5F3; padding: 16px; border-radius: 16px 16px 16px 4px; font-size: 15px; line-height: 1.55; display: flex; flex-direction: column; gap: 10px;">
@@ -132,13 +132,13 @@ Source: BCR · license appointments
 </li>
 <li style="flex: 1 1 230px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E8E5; border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 12px;">
 <span style="width: 40px; height: 40px; border-radius: 50%; background: #0E7A5F1A; color: #0E7A5F; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px;">3</span>
-<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600;">Searches by meaning</h3>
-<p style="margin: 0; color: #4A5A55; font-size: 15px;">Finds what you mean even if you don't use the institution's exact words.</p>
+<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600;">Indexes by meaning</h3>
+<p style="margin: 0; color: #4A5A55; font-size: 15px;">Splits text by section and question, and embeds it so it can be searched by meaning.</p>
 </li>
 <li style="flex: 1 1 230px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E8E5; border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 12px;">
 <span style="width: 40px; height: 40px; border-radius: 50%; background: #0E7A5F1A; color: #0E7A5F; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px;">4</span>
-<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600;">Answers with the source</h3>
-<p style="margin: 0; color: #4A5A55; font-size: 15px;">Gives you the requirements for your profile, with the official link so you can check.</p>
+<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600;">Ready to cite the source</h3>
+<p style="margin: 0; color: #4A5A55; font-size: 15px;">Every chunk knows which document and procedure it comes from, so an answer can cite it.</p>
 </li>
 </ol>
 </div>
@@ -179,9 +179,9 @@ Source: BCR · license appointments
 <section id="avance" aria-labelledby="avance-titulo" style="background: #F5F8F6; padding: 88px 24px;">
 <div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px;">
 <div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px;">
-<p style="margin: 0; font-size: 15px; font-weight: 600; color: #0E7A5F;">Progress</p>
-<h2 id="avance-titulo" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.75rem, 3.4vw, 2.5rem); line-height: 1.15; letter-spacing: -0.015em; font-weight: 700;">Built in public, step by step.</h2>
-<p style="margin: 0; font-size: 18px; color: #4A5A55;">Where the project stands today.</p>
+<p style="margin: 0; font-size: 15px; font-weight: 600; color: #0E7A5F;">Status</p>
+<h2 id="avance-titulo" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.75rem, 3.4vw, 2.5rem); line-height: 1.15; letter-spacing: -0.015em; font-weight: 700;">What's built.</h2>
+<p style="margin: 0; font-size: 18px; color: #4A5A55;">Final scope of the project and future work.</p>
 </div>
 <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch;">
 
@@ -192,21 +192,16 @@ Source: BCR · license appointments
 <li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E7A5F" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px;"><path d="M5 12l5 5l10 -10"></path></svg><span>Polite crawling and manual capture</span></li>
 <li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E7A5F" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px;"><path d="M5 12l5 5l10 -10"></path></svg><span>Text extraction from pages and PDFs</span></li>
 <li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E7A5F" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px;"><path d="M5 12l5 5l10 -10"></path></svg><span>Review and approval of every version</span></li>
+<li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E7A5F" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px;"><path d="M5 12l5 5l10 -10"></path></svg><span>Section- and question-aware chunking</span></li>
+<li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E7A5F" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px;"><path d="M5 12l5 5l10 -10"></path></svg><span>Embeddings for 637 chunks (~$0.003)</span></li>
 <li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E7A5F" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px;"><path d="M5 12l5 5l10 -10"></path></svg><span>Automated tests on every change</span></li>
 </ul>
 </div>
 
-<div style="flex: 1 1 300px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E8E5; border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 18px;">
-<span style="align-self: flex-start; padding: 4px 12px; border-radius: 999px; background: #FEF3C7; color: #92400E; font-size: 14px; font-weight: 600;">In progress</span>
-<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; font-size: 15px;">
-<li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px;"><path d="M12 3a9 9 0 1 0 9 9"></path><path d="M12 7v5l3 3"></path></svg><span>Chunking and embeddings of approved text</span></li>
-<li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px;"><path d="M12 3a9 9 0 1 0 9 9"></path><path d="M12 7v5l3 3"></path></svg><span>Hybrid search: meaning plus keywords</span></li>
-</ul>
-</div>
-
 <div style="flex: 1 1 300px; min-width: 0; background: #FFFFFF; border: 1px dashed #B9C5BF; border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 18px;">
-<span style="align-self: flex-start; padding: 4px 12px; border-radius: 999px; background: #EEF1EF; color: #4A5A55; font-size: 14px; font-weight: 600;">Next</span>
+<span style="align-self: flex-start; padding: 4px 12px; border-radius: 999px; background: #EEF1EF; color: #4A5A55; font-size: 14px; font-weight: 600;">Future work</span>
 <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; font-size: 15px; color: #33433E;">
+<li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A8883" stroke-width="2" aria-hidden="true" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="8"></circle></svg><span>Hybrid search: meaning plus keywords</span></li>
 <li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A8883" stroke-width="2" aria-hidden="true" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="8"></circle></svg><span>Requirements by user profile</span></li>
 <li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A8883" stroke-width="2" aria-hidden="true" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="8"></circle></svg><span>Agent that answers citing the source</span></li>
 <li style="display: flex; gap: 10px; align-items: flex-start;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A8883" stroke-width="2" aria-hidden="true" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="8"></circle></svg><span>Evaluation with a 40-question test set</span></li>
@@ -223,7 +218,7 @@ Source: BCR · license appointments
 <div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px;">
 <p style="margin: 0; font-size: 15px; font-weight: 600; color: #0E7A5F;">Under the hood</p>
 <h2 id="tec-titulo" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.75rem, 3.4vw, 2.5rem); line-height: 1.15; letter-spacing: -0.015em; font-weight: 700;">How it's built.</h2>
-<p style="margin: 0; font-size: 18px; color: #4A5A55;">An end-to-end AI project: data, search, agent, evaluation and deployment. All the code is open.</p>
+<p style="margin: 0; font-size: 18px; color: #4A5A55;">The data layer of a RAG system: ingestion, review, chunking and embeddings. All the code is open.</p>
 </div>
 <div style="display: flex; flex-wrap: wrap; gap: 20px;">
 <div style="flex: 1 1 420px; min-width: 0; border: 1px solid #E3E8E5; border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 16px;">
@@ -243,7 +238,7 @@ Source: BCR · license appointments
 </div>
 </div>
 <div style="flex: 1 1 420px; min-width: 0; border: 1px dashed #B9C5BF; border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 16px;">
-<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600;">Coming next</h3>
+<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600;">Future work</h3>
 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
 <span style="padding: 6px 14px; border-radius: 999px; background: #FFFFFF; border: 1px dashed #B9C5BF; font-size: 14px; font-weight: 500; color: #33433E;">LangGraph</span>
 <span style="padding: 6px 14px; border-radius: 999px; background: #FFFFFF; border: 1px dashed #B9C5BF; font-size: 14px; font-weight: 500; color: #33433E;">MLflow on Databricks</span>
@@ -260,8 +255,8 @@ Source: BCR · license appointments
 <section aria-labelledby="cta-titulo" style="padding: 0 24px 88px;">
 <div style="max-width: 1120px; margin: 0 auto; box-sizing: border-box; background: #0E7A5F; border-radius: 20px; padding: 56px 40px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 28px;">
 <div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 12px; color: #FFFFFF;">
-<h2 id="cta-titulo" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.75rem, 3.2vw, 2.25rem); line-height: 1.15; letter-spacing: -0.015em; font-weight: 700; color: #FFFFFF;">Follow along.</h2>
-<p style="margin: 0; font-size: 18px; color: #FFFFFF;">I'm building Sin Vueltas in public. If you're into AI applied to real problems in Costa Rica, let's connect.</p>
+<h2 id="cta-titulo" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.75rem, 3.2vw, 2.25rem); line-height: 1.15; letter-spacing: -0.015em; font-weight: 700; color: #FFFFFF;">Explore the code.</h2>
+<p style="margin: 0; font-size: 18px; color: #FFFFFF;">Sin Vueltas is open source. If you're into AI applied to real problems in Costa Rica, let's connect.</p>
 </div>
 <div style="display: flex; flex-wrap: wrap; gap: 12px;">
 <a href="https://github.com/kenneth260298/sin-vueltas" style="display: inline-flex; align-items: center; gap: 8px; min-height: 48px; box-sizing: border-box; padding: 0 22px; border-radius: 10px; background: #FFFFFF; color: #0B1F1A; font-weight: 600; text-decoration: none;">View the code</a>
